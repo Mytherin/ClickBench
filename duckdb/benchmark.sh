@@ -4,15 +4,15 @@
 
 sudo apt-get update
 sudo apt-get install -y python3-pip
-pip install duckdb psutil
+pip install duckdb psutil pandas
 
 # Load the data
 
 wget --continue 'https://datasets.clickhouse.com/hits_compatible/hits.csv.gz'
 gzip -d hits.csv.gz
+split -x -l 10000000 hits.csv split_hits
 
 ./load.py
-# 4216.5390389899985 seconds
 
 # Run the queries
 
