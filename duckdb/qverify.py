@@ -1,10 +1,5 @@
-#!/usr/bin/env python3
-
 import duckdb
-import timeit
-import psutil
-
-con = duckdb.connect(database="my-db.duckdb", read_only=False)
+import sys
 
 # verify that the data was loaded correctly by running a number of verification queries
 def compare_value(v1, v2):
@@ -33,24 +28,22 @@ def compare_results(r1, r2, query_num, query):
                print(type(rrow[col_nom]))
                raise Exception(f"Value difference {lrow[col_nom]} - {rrow[col_nom]} in column {col_nom} of query {query_num}:\n{query}")
 
+def verify(results, query, qnum):
+	if len(sys.args) < 2:
+		print("Expected ./query --number=X"
+		exit(1)
+	qnum = None
+	for arg in sys.args:
+		if arg.startswith('--number'):
+			qnum = int(arg.replace('--number', ''))
+	if qnum is None:
+		print("Expected ./query --number=X"
+		exit(1)
+	con = duckdb.connect()
+	expected_results = con.execute(f"""
+	SELECT *
+	FROM read_csv_auto('answers/q{qnum}.csv', all_varchar=True)
+	""").fetchall()
+	compare_results(results, expected_results, qnum, query)
 
-print("Verifying data load")
-# queries
-with open('verify_load.sql') as f:
-    query_lines = f.readlines()
-# answers
-verification_file = 'answers/verification_answers.csv'
-verification_results = con.execute(f"""
-SELECT *
-FROM read_csv_auto('{verification_file}', all_varchar=True, header=False)
-""").fetchall()
-query_count = len(query_lines)
-assert len(verification_results) == query_count
 
-for i in range(query_count):
-    query = query_lines[i]
-    print(f'{i + 1}/{query_count}')
-    # run the verification query
-    results = con.execute(query).fetchall()
-    # compare the results
-    compare_results(results, [verification_results[i]], i + 1, query)
