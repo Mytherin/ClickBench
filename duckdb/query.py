@@ -6,6 +6,17 @@ import psutil
 import sys
 import qverify
 
+if len(sys.argv) < 2:
+    print("Expected ./query --number=X")
+    exit(1)
+qnum = None
+for arg in sys.argv:
+    if arg.startswith('--number='):
+        qnum = int(arg.replace('--number=', ''))
+if qnum is None:
+    print("Expected ./query --number=X")
+    exit(1)
+
 query = sys.stdin.read()
 print(query)
 
@@ -17,4 +28,4 @@ for try_num in range(3):
     end = timeit.default_timer()
     print(end - start)
 
-    qverify.verify(results, query, query)
+    qverify.verify(results, query, qnum)
