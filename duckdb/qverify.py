@@ -30,14 +30,14 @@ def compare_results(r1, r2, query_num, query):
 
 def verify(results, query, qnum):
 	if len(sys.args) < 2:
-		print("Expected ./query --number=X"
+		print("Expected ./query --number=X")
 		exit(1)
 	qnum = None
 	for arg in sys.args:
 		if arg.startswith('--number'):
 			qnum = int(arg.replace('--number', ''))
 	if qnum is None:
-		print("Expected ./query --number=X"
+		print("Expected ./query --number=X")
 		exit(1)
 	con = duckdb.connect()
 	expected_results = con.execute(f"""
