@@ -8,6 +8,7 @@ def sanitize_value(v):
     v = v.replace('\\f', '\f')
     # single quotes (')
     v = v.replace("\\'", "'")
+    return v
 
 def compare_value(v1, v2):
     if type(v1) == type(0.0):
@@ -54,10 +55,16 @@ def verify(results, query, qnum):
     # note these indexes are 1-based (18=Q17 on the website, etc)
     # Q18: No ORDER BY after a group
     # Q22: ORDER BY has ties (row 9-10 both have "7" as COUNT)
+    # Q25: ORDER BY has ties (all 10 rows have times of 2013-07-01 20:00:0[01])
+    # Q29: ORDER BY has ties (rows 5-7 have avg strlen of 20, rows 8-9 have avg strlen of 19)
     # Q31: ORDER BY has ties (row 10-11 both have "1058" as COUNT)
     # Q32: ORDER BY has ties (all 10 rows in the result have a count of "1")
     # Q33: ORDER BY has ties (all 10 rows in the result have a count of "1" or "2")
-    skip_list = [18, 22, 31, 32, 33]
+    # Q39: ORDER BY has ties (all 10 rows have PageViews of 2)
+    # Q40: ORDER BY has ties (all 10 rows have PageViews of 15)
+    # Q41: ORDER BY has ties (several PageViews ties at 24-27)
+    # Q42: ORDER BY has ties (all 10 rows have PageViews of 1)
+    skip_list = [18, 22, 25, 29, 31, 32, 33, 39, 40, 41, 42]
     if qnum in skip_list:
         return
     con = duckdb.connect()
