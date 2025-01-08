@@ -26,7 +26,6 @@ time duckdb hits.db -f create.sql -c "COPY hits FROM 'hits.csv'"
 wc -c hits.db
 
 cat log.txt |
-  grep -P '^Run Time \(s\): real' |
-  sed -r -e 's/^Run Time \(s\): real\s*([0-9.]+).*$/\1/' |
-  awk '{ if ($2) { print $1 * 60 + $2 } else { print $1 } }' |
-  awk '{ if ($1 == "null") { skip = 1 } else { if (i % 3 == 0) { printf "[" }; printf skip ? "null" : $1; if (i % 3 != 2) { printf "," } else { print "]," }; ++i; skip = 0; } }'
+  grep -P '^\d|Killed|Segmentation|^Run Time \(s\): real' |
+  sed -r -e 's/^.*(Killed|Segmentation).*$/null\nnull\nnull/; s/^Run Time \(s\): real\s*([0-9.]+).*$/\1/' |
+  awk '{ if (i % 3 == 0) { printf "[" }; printf $1; if (i % 3 != 2) { printf "," } else { print "]," }; ++i; }'
