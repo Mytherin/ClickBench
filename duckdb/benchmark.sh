@@ -2,12 +2,14 @@
 
 # Install
 sudo apt-get update
-sudo apt-get install ninja-build cmake build-essential make ccache pip -y
+sudo apt-get install ninja-build cmake build-essential make ccache pip clang -y
 
+export CC=clang
+export CXX=clang++
 git clone https://github.com/Mytherin/duckdb
 cd duckdb
 git checkout archnative
-NATIVE_ARCH=1 LTO=thin make
+GEN=ninja NATIVE_ARCH=1 LTO=thin make
 export PATH="$PATH:`pwd`/build/release/"
 cd ..
 
