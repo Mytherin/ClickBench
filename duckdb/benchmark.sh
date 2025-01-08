@@ -13,8 +13,6 @@ gzip -d hits.csv.gz
 
 time duckdb hits.db -f create.sql -c "COPY hits FROM 'hits.csv'"
 
-./load.py
-
 # Run the queries
 
 ./run.sh 2>&1 | tee log.txt
