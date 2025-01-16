@@ -22,7 +22,7 @@ time duckdb hits.db -f create.sql
 
 ./run.sh 2>&1 | tee log.txt
 
-wc -c hits.duckdb
+wc -c hits.db
 
 cat log.txt |
   grep -P '^\d|Killed|Segmentation|^Run Time \(s\): real' |
