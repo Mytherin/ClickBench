@@ -6,9 +6,9 @@ sudo apt-get install ninja-build cmake build-essential make ccache pip clang -y
 
 export CC=clang
 export CXX=clang++
-git clone https://github.com/Mytherin/duckdb
+git clone https://github.com/duckdb/duckdb
 cd duckdb
-git checkout archnative
+git checkout v1.2-histrionicus
 GEN=ninja NATIVE_ARCH=1 LTO=thin make
 export PATH="$PATH:`pwd`/build/release/"
 cd ..
@@ -17,7 +17,7 @@ cd ..
 wget --no-verbose --continue 'https://datasets.clickhouse.com/hits_compatible/hits.csv.gz'
 gzip -d hits.csv.gz
 
-time duckdb hits.db -f create.sql -c "COPY hits FROM 'hits.csv'"
+time duckdb hits.db -f create.sql -c "SET disabled_compression_methods='fsst'" -c "COPY hits FROM 'hits.csv'"
 
 # Run the queries
 
