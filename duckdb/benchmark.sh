@@ -17,7 +17,7 @@ cd ..
 wget --no-verbose --continue 'https://datasets.clickhouse.com/hits_compatible/hits.tsv.gz'
 gzip -d hits.tsv.gz
 
-time duckdb hits.db -f create.sql -c "COPY hits FROM 'hits.tsv'"
+time duckdb hits.db -f create.sql -c "COPY hits FROM 'hits.tsv' (QUOTE '')"
 
 # Run the queries
 
