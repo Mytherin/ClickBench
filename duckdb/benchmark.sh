@@ -17,7 +17,7 @@ cd ..
 wget --no-verbose --continue 'https://datasets.clickhouse.com/hits_compatible/hits.csv.gz'
 gzip -d hits.csv.gz
 
-time duckdb hits.db -f create.sql -c "SET disabled_compression_methods='fsst'" -c "COPY hits FROM 'hits.csv'"
+time duckdb hits.db -f create.sql -c "COPY hits FROM 'hits.csv'"
 
 # Run the queries
 
