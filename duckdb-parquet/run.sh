@@ -4,14 +4,14 @@ TRIES=3
 
 cat queries.sql | while read -r query; do
     sync
-    echo 3 | sudo tee /proc/sys/vm/drop_caches
+    echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null
 
     echo "$query";
     cli_params=()
     cli_params+=("-c")
-    cli_params+=(".timer on")
-    cli_params+=("-c")
     cli_params+=("SET parquet_metadata_cache=true")
+    cli_params+=("-c")
+    cli_params+=(".timer on")
     for i in $(seq 1 $TRIES); do
       cli_params+=("-c")
       cli_params+=("${query}")
