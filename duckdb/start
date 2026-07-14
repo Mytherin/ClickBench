@@ -1,9 +1,31 @@
 #!/bin/bash
-# duckdb is embedded — no daemon to start. We do clean any stale WAL
-# files that may have been captured in the snapshot: a .wal whose footer
-# wasn't fully flushed pre-snapshot can leave duckdb refusing to open
-# the database ("IO Error: ... Bad message"). The .wal is regenerated
-# on the next write, so dropping it is safe between query sessions.
+# Start the persistent DuckDB "quack" server. Unlike the old embedded setup
+# (which forked a fresh `duckdb hits.db` process for every query), the database
+# now stays resident: warm tries connect over the quack protocol to this
+# long-lived server, and the driver only restarts it — via ./stop + ./start with
+# a cache flush in between — for the cold try of each query.
+set -e
+
+# Already running? ./start is called on every cold cycle and must be idempotent.
+if [ -f quack.pid ] && kill -0 "$(cat quack.pid)" 2>/dev/null; then
+    exit 0
+fi
+
+# Clean any stale WAL a prior crash/snapshot may have left: an unflushed .wal
+# footer makes duckdb refuse to open the database ("IO Error: ... Bad message").
+# Safe to drop — a read-only query server never writes a meaningful WAL.
 shopt -s nullglob
 rm -f ./*.wal ./*.db.wal
-exit 0
+rm -f quack.log quack.pid quack.holder.pid
+
+# quack_serve() starts the server on a background thread and returns, so the
+# duckdb process must be kept alive for the server to keep serving. We run the
+# serve command from serve.sql via -init, then wire the CLI's stdin to a fifo
+# held open by a background `sleep`. The CLI never sees EOF, so it blocks in its
+# read loop and the quack server stays up until ./stop kills both processes.
+rm -f quack.in
+mkfifo quack.in
+duckdb hits.db -init serve.sql < quack.in > quack.log 2>&1 &
+echo $! > quack.pid
+sleep 2147483647 > quack.in &
+echo $! > quack.holder.pid

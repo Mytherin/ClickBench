@@ -1,5 +1,8 @@
 #!/bin/bash
-# Reads a SQL query from stdin, runs it via duckdb against hits.db.
+# Reads a SQL query from stdin, runs it as a quack client against the persistent
+# server (see ./start) by opening the `quack:localhost` remote as the client's
+# default database, so unqualified `hits` in the query resolves to the server's
+# table. The persistent quack secret is created once in ./install.
 # Stdout: query result (boxed format).
 # Stderr: query runtime in fractional seconds on the last line.
 # Exit non-zero on error.
@@ -9,7 +12,7 @@ query=$(cat)
 
 # duckdb writes both the result and the `Run Time (s): real X.XXX` line to
 # stdout; capture, split, redirect timing to stderr.
-out=$(duckdb hits.db -c ".timer on" -c "$query" 2>/tmp/duckdb.err.$$) && status=0 || status=$?
+out=$(duckdb quack:localhost -c ".timer on" -c "$query" 2>/tmp/duckdb.err.$$) && status=0 || status=$?
 
 if [ "$status" -ne 0 ]; then
     cat /tmp/duckdb.err.$$ >&2
@@ -21,5 +24,5 @@ rm -f /tmp/duckdb.err.$$
 # Stdout: everything except the Run Time line.
 printf '%s\n' "$out" | grep -v '^Run Time '
 
-# Stderr: the timing in seconds.
+# Stderr: the timing in seconds (last Run Time line is the query).
 printf '%s\n' "$out" | awk '/^Run Time/ { print $5 }' | tail -n1 >&2

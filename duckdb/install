@@ -9,3 +9,12 @@ if ! command -v duckdb >/dev/null 2>&1; then
     # sibling scripts (check, load, query) find it unconditionally.
     sudo ln -sf "$HOME/.duckdb/cli/latest/duckdb" /usr/local/bin/duckdb
 fi
+
+# Pre-install the quack client/server extension so the server (./start) and the
+# clients (./query, ./check) load it from the local cache — no network fetch on
+# each cold restart. quack is an autoloadable core extension in DuckDB >= 1.5.3.
+duckdb -c "INSTALL quack;"
+
+# Persist the quack auth token as a secret so every `duckdb quack:localhost`
+# client picks it up automatically, without re-creating the secret per query.
+duckdb -c "CREATE OR REPLACE PERSISTENT SECRET (TYPE quack, TOKEN 'clickbench');"

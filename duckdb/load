@@ -1,6 +1,12 @@
 #!/bin/bash
 set -e
 
+# The driver starts the quack server (./start) before ./load, so a server is
+# already holding an empty hits.db. Stop it so we can rebuild the database file
+# from the source parquet with a standalone duckdb process (loading through the
+# server over the wire would ship the whole dataset back and forth).
+./stop
+
 # Idempotent: blow away any prior partial DB.
 rm -f hits.db
 
@@ -18,3 +24,14 @@ SQL
 
 rm -f hits.parquet
 sync
+
+# Bring the quack server back up on the freshly built database and wait until
+# it answers — bench_load runs a single (non-looping) ./check immediately after
+# us, so the server must already be ready when we return.
+./start
+for _ in $(seq 1 120); do
+    if ./check >/dev/null 2>&1; then
+        break
+    fi
+    sleep 1
+done

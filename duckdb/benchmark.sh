@@ -1,9 +1,15 @@
 #!/bin/bash
 export BENCH_DOWNLOAD_SCRIPT="download-hits-parquet-single"
-export BENCH_RESTARTABLE=no
-# Single-process engine: each query forks a fresh full-machine process with no
-# shared scheduler across connections, so the concurrent-QPS test only
-# oversubscribes RAM rather than measuring throughput. Skip it by default;
-# override BENCH_CONCURRENT_DURATION to re-enable. See issue #946.
-export BENCH_CONCURRENT_DURATION="${BENCH_CONCURRENT_DURATION:-0}"
+# DuckDB now runs as a persistent "quack" client/server: ./start launches a
+# long-lived server that holds hits.db resident, and ./query connects to it as a
+# client. This makes stop/start meaningful, so the driver's cold cycle (./stop ->
+# drop_caches -> ./start) restarts the server only for the cold try of each
+# query; the warm tries reuse the already-running, cache-warm server.
+export BENCH_RESTARTABLE=yes
+# Data lives on disk in hits.db and survives a server restart — no reload needed
+# between queries.
+export BENCH_DURABLE=yes
+# The quack server is a genuine shared server that many clients can hit at once,
+# so the concurrent-QPS throughput test is meaningful again (it was skipped for
+# the old embedded, fork-per-query setup; see issue #946).
 exec ../lib/benchmark-common.sh

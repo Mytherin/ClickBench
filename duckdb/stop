@@ -1,3 +1,17 @@
 #!/bin/bash
-# duckdb is an embedded CLI tool — no daemon to stop.
+# Stop the persistent quack server and the stdin holder that keeps it alive.
+# Killing the holder alone closes the fifo (EOF -> the CLI exits cleanly);
+# we also SIGTERM the server directly as a backstop. ./check then starts
+# failing, which is how the driver's bench_wait_stopped detects a real stop.
+if [ -f quack.pid ]; then
+    kill "$(cat quack.pid)" 2>/dev/null || true
+fi
+if [ -f quack.holder.pid ]; then
+    kill "$(cat quack.holder.pid)" 2>/dev/null || true
+fi
+rm -f quack.pid quack.holder.pid quack.in
+
+# Drop any WAL the server may have left so the next ./start can reopen hits.db.
+shopt -s nullglob
+rm -f ./*.wal ./*.db.wal
 exit 0

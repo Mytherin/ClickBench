@@ -1,4 +1,9 @@
 #!/bin/bash
+# Liveness probe for the quack server. Opening the `quack:localhost` URI as the
+# client's database and running a query forces a real round-trip to the server,
+# so this succeeds only while the server is up and fails ("Could not connect")
+# once ./stop has killed it — exactly what bench_wait_stopped needs. duckdb_tables()
+# is schema-independent, so this works both before ./load (empty db) and after.
 set -e
 
-duckdb -c "SELECT 1" >/dev/null
+duckdb quack:localhost -c "SELECT count(*) FROM duckdb_tables();" >/dev/null
