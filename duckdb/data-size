@@ -1,4 +1,6 @@
 #!/bin/bash
 set -e
 
-wc -c < hits.db
+# BSD/macOS `wc -c` left-pads its output with spaces; strip all whitespace so
+# the driver's `^[0-9]+$` size validation gets a clean integer on every platform.
+wc -c < hits.db | tr -d '[:space:]'

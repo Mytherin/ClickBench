@@ -1,37 +1,59 @@
 #!/bin/bash
 set -e
 
-# The driver starts the quack server (./start) before ./load, so a server is
-# already holding an empty hits.db. Stop it so we can rebuild the database file
-# from the source parquet with a standalone duckdb process (loading through the
-# server over the wire would ship the whole dataset back and forth).
-./stop
+# Load through the running quack server rather than building the file with a
+# separate process. Statements are shipped to the server with quack_query_by_name
+# and executed there, so read_parquet() and the hits table both live server-side
+# — nothing is streamed over the wire. The server (started by ./start before
+# ./load) already owns hits.db, so there is no stop/rebuild/restart and no need
+# to wait for readiness: bench_start confirmed the server is up before we run.
 
-# Idempotent: blow away any prior partial DB.
-rm -f hits.db
+# Run a statement on the server (discard any result rows). The statement is
+# wrapped in a $$...$$ dollar-quoted string so its own single quotes (parquet
+# path, string predicates) don't terminate the literal. In bash double quotes $$
+# is the shell PID, so the dollar signs are escaped as \$\$; $1 still expands.
+server_exec() {
+    duckdb quack:localhost -c "FROM quack_query_by_name('localhost', \$\$$1\$\$)" >/dev/null
+}
+# Run a scalar-returning statement on the server and echo just the value.
+server_scalar() {
+    duckdb quack:localhost -csv -noheader -c "FROM quack_query_by_name('localhost', \$\$$1\$\$)"
+}
 
-# Build the database from the source parquet via inline create + load DDL.
-duckdb hits.db -storage_version latest <<'SQL'
-.read create.sql
-INSERT INTO hits
-SELECT * REPLACE (
+# Optional fast path for local re-runs: when DUCKDB_SKIP_RELOAD is set, skip the
+# rebuild if the server already has hits loaded. Off by default so a normal run
+# always rebuilds. We ask the server about the table rather than poking at files:
+# hits is ingested in a single transaction, so a table that exists with rows is a
+# complete load; a failed/rolled-back load leaves no table or an empty one.
+if [ -n "$DUCKDB_SKIP_RELOAD" ]; then
+    exists=$(server_scalar "SELECT count(*) FROM duckdb_tables() WHERE table_name = 'hits'")
+    count=0
+    if [ "$exists" = "1" ]; then
+        count=$(server_scalar "SELECT count(*) FROM hits")
+    fi
+    if [ "$exists" = "1" ] && [ "${count:-0}" -gt 0 ]; then
+        echo "hits already loaded on the server (${count} rows); skipping load."
+        exit 0
+    fi
+fi
+
+# (Re)build the table on the server. Drop any empty/partial leftover first.
+server_exec "DROP TABLE IF EXISTS hits"
+
+# create.sql holds the CREATE TABLE (no single quotes), so it embeds directly in
+# the single-quoted SQL string we hand to quack_query_by_name.
+server_exec "$(cat create.sql)"
+
+# Ingest from the source parquet, server-side.
+server_exec "INSERT INTO hits SELECT * REPLACE (
     make_date(EventDate) AS EventDate,
     epoch_ms(EventTime * 1000) AS EventTime,
     epoch_ms(ClientEventTime * 1000) AS ClientEventTime,
     epoch_ms(LocalEventTime * 1000) AS LocalEventTime)
-FROM read_parquet('hits.parquet', binary_as_string=True);
-SQL
+FROM read_parquet('hits.parquet', binary_as_string=True)"
+
+# Flush the WAL into hits.db so ./data-size sees the real size and the data
+# survives the cold-cycle restarts (./start/./stop clear the WAL).
+server_exec "CHECKPOINT"
 
 rm -f hits.parquet
-sync
-
-# Bring the quack server back up on the freshly built database and wait until
-# it answers — bench_load runs a single (non-looping) ./check immediately after
-# us, so the server must already be ready when we return.
-./start
-for _ in $(seq 1 120); do
-    if ./check >/dev/null 2>&1; then
-        break
-    fi
-    sleep 1
-done

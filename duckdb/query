@@ -12,7 +12,11 @@ query=$(cat)
 
 # duckdb writes both the result and the `Run Time (s): real X.XXX` line to
 # stdout; capture, split, redirect timing to stderr.
-out=$(duckdb quack:localhost -c ".timer on" -c "$query" 2>/tmp/duckdb.err.$$) && status=0 || status=$?
+# Wrap the query in a $$...$$ dollar-quoted string so its own single quotes
+# (e.g. WHERE URL <> '', EventDate >= '2013-07-14') don't terminate the literal.
+# In bash double quotes $$ is the shell PID, so the dollar signs are escaped as
+# \$\$; $query itself still expands.
+out=$(duckdb quack:localhost -c ".timer on" -c "FROM quack_query_by_name('localhost', \$\$$query\$\$)" 2>/tmp/duckdb.err.$$) && status=0 || status=$?
 
 if [ "$status" -ne 0 ]; then
     cat /tmp/duckdb.err.$$ >&2

@@ -13,7 +13,8 @@ fi
 
 # Clean any stale WAL a prior crash/snapshot may have left: an unflushed .wal
 # footer makes duckdb refuse to open the database ("IO Error: ... Bad message").
-# Safe to drop — a read-only query server never writes a meaningful WAL.
+# Safe to drop — ./load CHECKPOINTs after ingest, so committed data lives in
+# hits.db and the WAL holds nothing we need across a restart.
 shopt -s nullglob
 rm -f ./*.wal ./*.db.wal
 rm -f quack.log quack.pid quack.holder.pid
@@ -23,6 +24,10 @@ rm -f quack.log quack.pid quack.holder.pid
 # serve command from serve.sql via -init, then wire the CLI's stdin to a fifo
 # held open by a background `sleep`. The CLI never sees EOF, so it blocks in its
 # read loop and the quack server stays up until ./stop kills both processes.
+#
+# Always open the on-disk hits.db (creating an empty one on a fresh machine):
+# ./load ingests into this database over quack and the data must survive the
+# per-query cold-cycle restarts, so the server has to be file-backed.
 rm -f quack.in
 mkfifo quack.in
 duckdb hits.db -init serve.sql < quack.in > quack.log 2>&1 &
