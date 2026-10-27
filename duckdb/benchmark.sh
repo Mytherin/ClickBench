@@ -2,7 +2,7 @@
 
 # Install
 export HOME=${HOME:=~}
-curl https://install.duckdb.org | sh
+curl https://install.duckdb.org | DUCKDB_VERSION=v2.0.0 sh
 export PATH=$HOME'/.duckdb/cli/latest':$PATH
 
 # Load the data
@@ -13,7 +13,7 @@ pigz -d -f hits.tsv.gz
 echo -n "Load time: "
 command time -f '%e' duckdb hits.db -f create.sql -c "COPY hits FROM 'hits.tsv' (QUOTE '')"
 
-# Run the queries
+# Run the queries against a long-lived quack server so the buffer cache stays warm
 
 ./run.sh 2>&1 | tee log.txt
 
